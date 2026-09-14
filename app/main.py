@@ -6,9 +6,12 @@ from loguru import logger
 
 from app.api.routes import health, users
 from app.core.config import get_settings
-from app.core.database import close_mongo_connection, init_database
 from app.core.logging import configure_logging
-from app.exceptions import AppError
+from app.domain.exceptions import AppError
+from app.infrastructure.persistence.mongodb.database import (
+    close_mongo_connection,
+    init_database,
+)
 
 
 @asynccontextmanager

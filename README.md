@@ -2,16 +2,44 @@
 
 Production-style FastAPI service for storing user details in MongoDB, using Pydantic validation, Loguru logging, and a layered architecture.
 
-## Architecture
+## Multi-layered architecture
 
-| Layer | Responsibility |
-| --- | --- |
-| `app/api/routes` | HTTP controllers and request/response mapping |
-| `app/services` | Business orchestration |
-| `app/repositories` | MongoDB persistence (Motor) |
-| `app/schemas` | Pydantic DTOs for API contracts |
-| `app/domain` | Core domain models |
-| `app/core` | Configuration, logging, database lifecycle |
+Dependencies point **inward**: API → Application → Domain ← Infrastructure.
+
+```mermaid
+flowchart TB
+  subgraph presentation [Presentation]
+    routes[api/routes]
+    schemas[api/schemas]
+    mappers[api/mappers]
+  end
+  subgraph application [Application]
+    services[application/services]
+  end
+  subgraph domain [Domain]
+    entities[domain/user]
+    ports[domain/ports]
+    errors[domain/exceptions]
+  end
+  subgraph infrastructure [Infrastructure]
+    mongo[infrastructure/persistence/mongodb]
+  end
+  routes --> services
+  routes --> mappers
+  mappers --> entities
+  services --> ports
+  services --> entities
+  mongo -.implements.-> ports
+  mongo --> entities
+```
+
+| Layer | Package | Responsibility |
+| --- | --- | --- |
+| **Presentation** | `app/api/` | HTTP routes, Pydantic API schemas, schema ↔ domain mappers |
+| **Application** | `app/application/` | Use cases (`UserService`); no FastAPI or MongoDB imports |
+| **Domain** | `app/domain/` | Entities (`User`, `NewUser`), repository **ports**, domain errors |
+| **Infrastructure** | `app/infrastructure/` | MongoDB adapter (`MongoUserRepository`), connection lifecycle |
+| **Cross-cutting** | `app/core/` | Settings and Loguru configuration |
 
 ## Prerequisites
 

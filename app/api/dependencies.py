@@ -4,9 +4,10 @@ from typing import Annotated
 from fastapi import Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.database import get_database
-from app.repositories.user_repository import MongoUserRepository, UserRepository
-from app.services.user_service import UserService
+from app.application.services.user_service import UserService
+from app.domain.ports.user_repository import UserRepositoryPort
+from app.infrastructure.persistence.mongodb.database import get_database
+from app.infrastructure.persistence.mongodb.user_repository import MongoUserRepository
 
 
 async def get_db() -> AsyncIterator[AsyncIOMotorDatabase]:
@@ -15,11 +16,11 @@ async def get_db() -> AsyncIterator[AsyncIOMotorDatabase]:
 
 def get_user_repository(
     database: Annotated[AsyncIOMotorDatabase, Depends(get_db)],
-) -> UserRepository:
+) -> UserRepositoryPort:
     return MongoUserRepository(database)
 
 
 def get_user_service(
-    repository: Annotated[UserRepository, Depends(get_user_repository)],
+    repository: Annotated[UserRepositoryPort, Depends(get_user_repository)],
 ) -> UserService:
     return UserService(repository)

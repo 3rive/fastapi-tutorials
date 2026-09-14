@@ -1,11 +1,14 @@
 import os
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.core.config import get_settings
-from app.core.database import close_mongo_connection, init_database
+from app.infrastructure.persistence.mongodb.database import (
+    close_mongo_connection,
+    init_database,
+)
 from app.main import create_app
 
 
@@ -40,7 +43,7 @@ async def client(app) -> AsyncIterator[AsyncClient]:
 
 @pytest.fixture(autouse=True)
 async def clean_users_collection(app) -> AsyncIterator[None]:
-    from app.core.database import get_database
+    from app.infrastructure.persistence.mongodb.database import get_database
 
     await get_database().users.delete_many({})
     yield

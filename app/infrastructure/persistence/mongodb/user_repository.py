@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import Any
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -7,24 +7,11 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
-from app.domain.user import User
-from app.exceptions import ConflictError, NotFoundError
-from app.schemas.user import UserCreate, UserUpdate
+from app.domain.exceptions import ConflictError, NotFoundError
+from app.domain.user import NewUser, User, UserChanges
 
 
-class UserRepository(Protocol):
-    async def create(self, payload: UserCreate) -> User: ...
-
-    async def get_by_id(self, user_id: str) -> User: ...
-
-    async def list_users(self, skip: int, limit: int) -> list[User]: ...
-
-    async def update(self, user_id: str, payload: UserUpdate) -> User: ...
-
-    async def delete(self, user_id: str) -> None: ...
-
-
-def _to_domain(document: dict[str, Any]) -> User:
+def _document_to_user(document: dict[str, Any]) -> User:
     return User(
         id=str(document["_id"]),
         email=document["email"],
@@ -36,15 +23,17 @@ def _to_domain(document: dict[str, Any]) -> User:
 
 
 class MongoUserRepository:
+    """Infrastructure adapter: maps domain operations to MongoDB documents."""
+
     def __init__(self, database: AsyncIOMotorDatabase) -> None:
         self._collection = database.users
 
-    async def create(self, payload: UserCreate) -> User:
+    async def create(self, data: NewUser) -> User:
         now = datetime.now(UTC)
         document = {
-            "email": payload.email.lower(),
-            "full_name": payload.full_name.strip(),
-            "phone": payload.phone,
+            "email": data.email,
+            "full_name": data.full_name,
+            "phone": data.phone,
             "created_at": now,
             "updated_at": now,
         }
@@ -53,14 +42,14 @@ class MongoUserRepository:
         except DuplicateKeyError:
             raise ConflictError("A user with this email already exists") from None
         document["_id"] = result.inserted_id
-        return _to_domain(document)
+        return _document_to_user(document)
 
     async def get_by_id(self, user_id: str) -> User:
         object_id = _parse_object_id(user_id)
         document = await self._collection.find_one({"_id": object_id})
         if document is None:
             raise NotFoundError("User not found")
-        return _to_domain(document)
+        return _document_to_user(document)
 
     async def list_users(self, skip: int, limit: int) -> list[User]:
         cursor = (
@@ -69,21 +58,21 @@ class MongoUserRepository:
             .skip(skip)
             .limit(limit)
         )
-        return [_to_domain(document) async for document in cursor]
+        return [_document_to_user(document) async for document in cursor]
 
-    async def update(self, user_id: str, payload: UserUpdate) -> User:
-        object_id = _parse_object_id(user_id)
-        updates: dict[str, Any] = {}
-        if payload.email is not None:
-            updates["email"] = payload.email.lower()
-        if payload.full_name is not None:
-            updates["full_name"] = payload.full_name.strip()
-        if payload.phone is not None:
-            updates["phone"] = payload.phone
-        if not updates:
+    async def update(self, user_id: str, changes: UserChanges) -> User:
+        if not changes.has_changes():
             return await self.get_by_id(user_id)
 
-        updates["updated_at"] = datetime.now(UTC)
+        object_id = _parse_object_id(user_id)
+        updates: dict[str, Any] = {"updated_at": datetime.now(UTC)}
+        if changes.email is not None:
+            updates["email"] = changes.email
+        if changes.full_name is not None:
+            updates["full_name"] = changes.full_name
+        if changes.phone is not None:
+            updates["phone"] = changes.phone
+
         try:
             result = await self._collection.find_one_and_update(
                 {"_id": object_id},
@@ -94,7 +83,7 @@ class MongoUserRepository:
             raise ConflictError("A user with this email already exists") from None
         if result is None:
             raise NotFoundError("User not found")
-        return _to_domain(result)
+        return _document_to_user(result)
 
     async def delete(self, user_id: str) -> None:
         object_id = _parse_object_id(user_id)
