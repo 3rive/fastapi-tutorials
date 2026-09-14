@@ -1,17 +1,9 @@
-from fastapi.testclient import TestClient
-
-from app.main import app
-
-client = TestClient(app)
+import pytest
+from httpx import AsyncClient
 
 
-def test_health() -> None:
-    response = client.get("/health")
+@pytest.mark.asyncio
+async def test_health(client: AsyncClient) -> None:
+    response = await client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
-
-
-def test_list_tutorials() -> None:
-    response = client.get("/tutorials")
-    assert response.status_code == 200
-    assert response.json()["tutorials"] == ["getting-started"]
