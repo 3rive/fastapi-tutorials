@@ -22,6 +22,10 @@ class Settings(BaseSettings):
         default="fastapi_tutorials",
         alias="MONGODB_DATABASE",
     )
+    cors_origins: list[str] = Field(
+        default=["*"],
+        alias="CORS_ORIGINS",
+    )
 
 
 @lru_cache

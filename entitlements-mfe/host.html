@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Host shell — entitlements MFE</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+        background: #e7ece8;
+        color: #1b241f;
+      }
+      .shell {
+        padding: 1.25rem 1.5rem 0.5rem;
+        border-bottom: 1px solid #c5d0c8;
+        background: #f7f4ec;
+      }
+      .shell h1 {
+        margin: 0;
+        font-size: 1.05rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .shell p {
+        margin: 0.35rem 0 0;
+        color: #4d5b54;
+      }
+      ssp-entitlements {
+        display: block;
+        min-height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <h1>Self Service Portal host</h1>
+      <p>
+        This page is a host shell. Only the entitlements microfrontend is mounted
+        below as <code>&lt;ssp-entitlements&gt;</code>.
+      </p>
+    </div>
+    <ssp-entitlements></ssp-entitlements>
+    <script type="module" src="/src/mfe.tsx"></script>
+  </body>
+</html>
