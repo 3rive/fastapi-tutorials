@@ -1,35 +1,41 @@
 # fastapi-tutorials
 
-FastAPI service for users and automation entitlements, stored in SQLite, plus a standalone entitlements microfrontend.
+Two deployable components live in this repository:
 
-| Component | Location | What it does |
-| --- | --- | --- |
-| API | `app/` | Health, user CRUD, and entitlement grant-register CRUD |
-| Entitlements UI | `entitlements-mfe/` | React microfrontend for entitlements only |
+| Component | Path | Stack | Role |
+| --- | --- | --- | --- |
+| HTTP API | `app/` | FastAPI 0.3.0, Pydantic, Loguru, SQLAlchemy 2, aiosqlite | Health, users, entitlements |
+| Entitlements microfrontend | `entitlements-mfe/` | Vite, React 18, TypeScript | Grant-register UI only |
 
-Validation is Pydantic. Logging is Loguru. Persistence is SQLAlchemy 2 with aiosqlite.
+There is no MongoDB, Docker Compose, or in-memory store. Both users and entitlements persist in SQLite.
 
-## Architecture
+## Repository layout
 
-| Layer | Responsibility |
-| --- | --- |
-| `app/api/routes` | HTTP controllers (`health`, `users`, `entitlements`) |
-| `app/services` | Business orchestration and logging |
-| `app/repositories` | SQLite reads and writes |
-| `app/models` | SQLAlchemy tables `users` and `entitlements` |
-| `app/schemas` | Pydantic request and response models |
-| `app/domain` | Domain objects used by services |
-| `app/core` | Settings, Loguru setup, engine and session lifecycle |
-| `entitlements-mfe/` | Vite + React UI, also published as `<ssp-entitlements>` |
+```text
+app/                    FastAPI application
+  api/routes/           health.py, users.py, entitlements.py
+  api/dependencies.py   session and service wiring
+  services/             UserService, EntitlementService
+  repositories/         SqliteUserRepository, SqliteEntitlementRepository
+  models/               SQLAlchemy tables users, entitlements
+  schemas/              request and response DTOs
+  domain/               User, Entitlement, Permission, EntitlementStatus
+  core/                 config, logging, SQLite engine
+  exceptions.py         AppError, NotFoundError, ConflictError, BadRequestError
+  main.py               app factory, CORS, lifespan
+entitlements-mfe/       standalone UI and <ssp-entitlements> custom element
+tests/                  pytest: health, CORS, users, entitlements
+scripts/                cloud-agent-install.sh, cloud-agent-start.sh
+data/                   SQLite file app.db (created at runtime)
+.env.example            APP_ENV, LOG_LEVEL, DATABASE_URL, CORS_ORIGINS
+```
 
 ## Prerequisites
 
 - Python 3.12+
-- Node.js 22+ (entitlements microfrontend only)
+- Node.js 22+ if you run the microfrontend
 
 ## Configuration
-
-Copy the example file and edit it if the defaults are not what you want:
 
 ```bash
 cp .env.example .env
@@ -37,14 +43,14 @@ cp .env.example .env
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `APP_ENV` | `development` | Runtime label used in startup logs |
+| `APP_ENV` | `development` | Label in the startup log |
 | `LOG_LEVEL` | `INFO` | Loguru level |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./data/app.db` | SQLite database |
-| `CORS_ORIGINS` | `["*"]` | Origins allowed to call the API |
+| `CORS_ORIGINS` | `["*"]` | Browser origins allowed to call the API |
 
-The database file is created on first startup. `./scripts/cloud-agent-start.sh` only creates the `data/` directory.
+`./scripts/cloud-agent-start.sh` creates `data/`. The first API start creates `data/app.db` and the `users` and `entitlements` tables.
 
-## Setup
+## Run the API
 
 ```bash
 ./scripts/cloud-agent-install.sh
@@ -52,39 +58,59 @@ source .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-`cloud-agent-install.sh` creates `.venv`, installs `requirements.txt`, and runs `npm install` in `entitlements-mfe/`.
+Install also runs `npm install` in `entitlements-mfe/`.
 
-- API docs: http://localhost:8000/docs
-- Health: http://localhost:8000/health
-- Entitlements UI: see `entitlements-mfe/README.md`
+- Docs: http://localhost:8000/docs
+- Health: `GET /health` → `{"status":"ok"}`
 
-## User API
+## Run the entitlements UI
 
-Stored in the `users` table. Email is unique.
+With the API already on port 8000:
+
+```bash
+cd entitlements-mfe
+npm run dev
+```
+
+Vite listens on http://localhost:5173 and proxies `/entitlements` and `/health` to the API. Details are in `entitlements-mfe/README.md`.
+
+## Health
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `POST` | `/users` | Create a user (`email`, `full_name`, optional `phone`) |
-| `GET` | `/users` | List users (`skip`, `limit`) |
-| `GET` | `/users/{id}` | Get one user |
+| `GET` | `/health` | Liveness probe |
+
+## User API
+
+Table `users`. Unique `email`. Duplicate email returns `409`.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/users` | Create (`email`, `full_name`, optional `phone`) |
+| `GET` | `/users` | List (`skip` ≥ 0, `limit` 1–100, default 20) |
+| `GET` | `/users/{id}` | Get one |
 | `PATCH` | `/users/{id}` | Update email, name, or phone |
-| `DELETE` | `/users/{id}` | Delete a user |
+| `DELETE` | `/users/{id}` | Delete (`204`) |
 
 ## Entitlement API
 
-Grant register: who was given access to which automation, by whom, and when. Stored in the `entitlements` table. `(automation_key, ad_group)` is unique, ignoring case.
+Table `entitlements`. Unique `(automation_key, ad_group)` ignoring case (`409` on conflict). Grant register only: who received which automation, from whom, and when.
 
-Fields: `automation_key`, `ad_group`, `permissions` (`view`, `execute`), `granted_by`, `granted_at`, `expires_at`, `status` (`active`, `revoked`), `revoked_by`, `revoked_at`, `schema_version`.
+| Field | Values |
+| --- | --- |
+| `permissions` | list of `view` and/or `execute` |
+| `status` | `active` or `revoked` |
+| `schema_version` | integer ≥ 1, default `1` |
 
 | Method | Path | Description |
 | --- | --- | --- |
 | `POST` | `/entitlements` | Create a grant |
-| `GET` | `/entitlements` | List grants (`skip`, `limit`, `automation_key`, `ad_group`, `status`) |
-| `GET` | `/entitlements/{id}` | Get one grant |
-| `PATCH` | `/entitlements/{id}` | Change permissions, expiry, or revoke/restore |
-| `DELETE` | `/entitlements/{id}` | Delete a grant |
+| `GET` | `/entitlements` | List (`skip`, `limit`, `automation_key`, `ad_group`, `status`) |
+| `GET` | `/entitlements/{id}` | Get one |
+| `PATCH` | `/entitlements/{id}` | Update permissions, expiry, or revoke/restore |
+| `DELETE` | `/entitlements/{id}` | Delete (`204`) |
 
-Revoking requires `revoked_by` and sets `revoked_at`. Restoring to `active` clears both revoke fields.
+Revoke payloads must include `revoked_by` (sets `revoked_at`). Restoring `status` to `active` clears `revoked_by` and `revoked_at`.
 
 ## Tests
 
@@ -94,4 +120,4 @@ pytest
 cd entitlements-mfe && npm test
 ```
 
-API tests use a temporary SQLite file. The microfrontend tests cover the entitlements API client.
+`tests/` covers health, CORS, user CRUD, and entitlement CRUD against a temporary SQLite file. `entitlements-mfe` Vitest covers the HTTP client.

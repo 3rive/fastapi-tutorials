@@ -1,29 +1,31 @@
 # Entitlements microfrontend
 
-React + Vite UI for the entitlements grant register. It calls only `/entitlements`. Users and other portal modules are not part of this app.
+Vite + React 18 + TypeScript UI for the entitlements grant register. Package name: `@ssp/entitlements-mfe`.
 
-Package name: `@ssp/entitlements-mfe`.
+This app is entitlements only. It does not render users, health, or other API modules. All data comes from the FastAPI `/entitlements` routes, which store rows in SQLite.
 
-## What it includes
+## Components
 
-| Surface | Entry | Behavior |
-| --- | --- | --- |
-| Standalone page | `index.html` / `src/main.tsx` | Full entitlements screen |
-| Host custom element | `host.html` / `src/mfe.tsx` | Same screen inside `<ssp-entitlements>` (shadow DOM) |
-| API client | `src/api.ts` | List, create, update, and delete against the FastAPI service |
+| Path | Role |
+| --- | --- |
+| `index.html` + `src/main.tsx` | Standalone page |
+| `host.html` + `src/mfe.tsx` | Host demo that mounts `<ssp-entitlements>` in shadow DOM |
+| `src/App.tsx` | Create, list, filter, update, revoke, restore, delete |
+| `src/api.ts` | HTTP client for `/entitlements` |
+| `src/types.ts` | Entitlement types shared with the API |
+| `src/styles.css` | Isolated styles (inlined into the custom element) |
+| `src/api.test.ts` | Vitest coverage for the client |
 
-The screen can create a grant, filter the list, change permissions and expiry, revoke, restore, and delete.
+## Run with the API
 
-## Run locally
-
-Start the API from the repository root first. It listens on port 8000 and stores grants in SQLite.
+From the repository root, start SQLite-backed FastAPI on port 8000:
 
 ```bash
 source .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Then start this app:
+Then:
 
 ```bash
 cd entitlements-mfe
@@ -31,35 +33,37 @@ npm install
 npm run dev
 ```
 
-- Standalone UI: http://localhost:5173
-- Host-shell demo: http://localhost:5173/host.html
-
-The Vite dev server proxies `/entitlements` and `/health` to `http://127.0.0.1:8000`. With that proxy, leave `api-base` unset.
-
-## Configuration
-
-| Source | Used when |
+| URL | What you get |
 | --- | --- |
-| `api-base` attribute on `<ssp-entitlements>` | A host page embeds the custom element and the API is on another origin |
-| `VITE_API_BASE` | Standalone or embedded build should call a fixed API origin |
-| empty (default) | Requests stay same-origin, including the Vite proxy |
+| http://localhost:5173 | Standalone entitlements UI |
+| http://localhost:5173/host.html | Host shell around `<ssp-entitlements>` |
 
-The API allows browser calls from other origins through `CORS_ORIGINS` in the root `.env` (default `["*"]`).
+`vite.config.ts` proxies `/entitlements` and `/health` to `http://127.0.0.1:8000`. Leave `api-base` empty when using that proxy.
 
-## Composition
+## API wiring
+
+| Source | When to use it |
+| --- | --- |
+| empty (default) | Same origin or Vite proxy |
+| `VITE_API_BASE` | Standalone/build should call a fixed API origin |
+| `api-base` on `<ssp-entitlements>` | Host page and API are on different origins |
+
+The API CORS setting is `CORS_ORIGINS` in the root `.env` (default `["*"]`).
+
+## Host composition
 
 ```html
 <ssp-entitlements api-base="http://localhost:8000"></ssp-entitlements>
 <script type="module" src="/src/mfe.tsx"></script>
 ```
 
-`host.html` is a minimal shell that mounts the element with no `api-base`, so it uses the dev proxy.
+`host.html` omits `api-base` so the element uses the Vite proxy in development.
 
 ## Scripts
 
 | Command | Result |
 | --- | --- |
-| `npm run dev` | Dev server on port 5173 |
-| `npm test` | Vitest tests for the API client |
-| `npm run build` | Production build of `index.html` and `host.html` |
-| `npm run preview` | Serves the production build on port 5173 |
+| `npm run dev` | Dev server on `0.0.0.0:5173` |
+| `npm test` | Vitest (`jsdom`) |
+| `npm run build` | Production bundles for `index.html` and `host.html` |
+| `npm run preview` | Serve the production build on port 5173 |
