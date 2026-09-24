@@ -123,5 +123,5 @@ async def test_invalid_permission_is_rejected(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_unknown_entitlement_returns_not_found(client: AsyncClient) -> None:
-    response = await client.get("/entitlements/64b64c2f2f8fb8c2a1e9d001")
+    response = await client.get("/entitlements/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 404

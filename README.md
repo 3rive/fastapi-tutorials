@@ -7,7 +7,7 @@ Two deployable components live in this repository:
 | HTTP API | `app/` | FastAPI 0.3.0, Pydantic, Loguru, SQLAlchemy 2, aiosqlite | Health, users, entitlements |
 | Entitlements microfrontend | `entitlements-mfe/` | Vite, React 18, TypeScript | Grant-register UI only |
 
-There is no MongoDB, Docker Compose, or in-memory store. Both users and entitlements persist in SQLite.
+Both users and entitlements persist in SQLite.
 
 ## Repository layout
 
