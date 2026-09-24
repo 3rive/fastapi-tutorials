@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
 
-from app.api.routes import health, users
+from app.api.routes import entitlements, health, users
 from app.core.config import get_settings
 from app.core.database import close_mongo_connection, init_database
 from app.core.logging import configure_logging
@@ -33,6 +33,7 @@ def create_app() -> FastAPI:
     )
     application.include_router(health.router)
     application.include_router(users.router)
+    application.include_router(entitlements.router)
 
     @application.exception_handler(AppError)
     async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:

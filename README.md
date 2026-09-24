@@ -41,6 +41,18 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | `PATCH` | `/users/{id}` | Update a user |
 | `DELETE` | `/users/{id}` | Delete a user |
 
+## Entitlement API
+
+Grant register for automations (who was given what, by whom, when). Persistence is in-memory.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/entitlements` | Create an entitlement |
+| `GET` | `/entitlements` | List entitlements (`skip`, `limit`, `automation_key`, `ad_group`, `status`) |
+| `GET` | `/entitlements/{id}` | Get one entitlement |
+| `PATCH` | `/entitlements/{id}` | Update permissions, expiry, or revoke/restore |
+| `DELETE` | `/entitlements/{id}` | Delete an entitlement |
+
 ## Tests
 
 Requires MongoDB on `localhost:27017` (start with `./scripts/start-mongodb.sh`):
