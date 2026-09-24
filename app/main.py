@@ -7,7 +7,7 @@ from loguru import logger
 
 from app.api.routes import entitlements, health, users
 from app.core.config import get_settings
-from app.core.database import close_mongo_connection, init_database
+from app.core.database import dispose_engine, init_database
 from app.core.logging import configure_logging
 from app.exceptions import AppError
 
@@ -21,7 +21,7 @@ async def lifespan(_: FastAPI):
     try:
         yield
     finally:
-        await close_mongo_connection()
+        await dispose_engine()
         logger.info("Application shutdown complete")
 
 
@@ -29,7 +29,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     application = FastAPI(
         title=settings.app_name,
-        version="0.2.0",
+        version="0.3.0",
         lifespan=lifespan,
     )
     application.add_middleware(

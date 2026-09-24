@@ -2,5 +2,5 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-"${ROOT}/scripts/install-mongodb.sh"
-"${ROOT}/scripts/start-mongodb.sh"
+mkdir -p "${ROOT}/data"
+echo "SQLite data directory ready at ${ROOT}/data"

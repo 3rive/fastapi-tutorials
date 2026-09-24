@@ -14,13 +14,9 @@ class Settings(BaseSettings):
     app_name: str = "fastapi-tutorials"
     app_env: str = Field(default="development", alias="APP_ENV")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
-    mongodb_uri: str = Field(
-        default="mongodb://localhost:27017",
-        alias="MONGODB_URI",
-    )
-    mongodb_database: str = Field(
-        default="fastapi_tutorials",
-        alias="MONGODB_DATABASE",
+    database_url: str = Field(
+        default="sqlite+aiosqlite:///./data/app.db",
+        alias="DATABASE_URL",
     )
     cors_origins: list[str] = Field(
         default=["*"],

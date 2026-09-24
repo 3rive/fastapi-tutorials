@@ -1,27 +1,22 @@
-from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import Depends
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_database
+from app.core.database import get_session
 from app.repositories.entitlement_repository import (
     EntitlementRepository,
-    InMemoryEntitlementRepository,
+    SqliteEntitlementRepository,
 )
-from app.repositories.user_repository import MongoUserRepository, UserRepository
+from app.repositories.user_repository import SqliteUserRepository, UserRepository
 from app.services.entitlement_service import EntitlementService
 from app.services.user_service import UserService
 
 
-async def get_db() -> AsyncIterator[AsyncIOMotorDatabase]:
-    yield get_database()
-
-
 def get_user_repository(
-    database: Annotated[AsyncIOMotorDatabase, Depends(get_db)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> UserRepository:
-    return MongoUserRepository(database)
+    return SqliteUserRepository(session)
 
 
 def get_user_service(
@@ -30,8 +25,10 @@ def get_user_service(
     return UserService(repository)
 
 
-def get_entitlement_repository() -> EntitlementRepository:
-    return InMemoryEntitlementRepository()
+def get_entitlement_repository(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> EntitlementRepository:
+    return SqliteEntitlementRepository(session)
 
 
 def get_entitlement_service(

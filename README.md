@@ -1,6 +1,6 @@
 # fastapi-tutorials
 
-Production-style FastAPI service for storing user details in MongoDB, using Pydantic validation, Loguru logging, and a layered architecture.
+Production-style FastAPI service for users and automation entitlements, persisted in SQLite. Validation is Pydantic, logging is Loguru, and HTTP is a layered FastAPI app.
 
 ## Architecture
 
@@ -8,7 +8,8 @@ Production-style FastAPI service for storing user details in MongoDB, using Pyda
 | --- | --- |
 | `app/api/routes` | HTTP controllers and request/response mapping |
 | `app/services` | Business orchestration |
-| `app/repositories` | MongoDB persistence (Motor) |
+| `app/repositories` | SQLite persistence (SQLAlchemy + aiosqlite) |
+| `app/models` | SQLAlchemy table mappings |
 | `app/schemas` | Pydantic DTOs for API contracts |
 | `app/domain` | Core domain models |
 | `app/core` | Configuration, logging, database lifecycle |
@@ -16,17 +17,17 @@ Production-style FastAPI service for storing user details in MongoDB, using Pyda
 ## Prerequisites
 
 - Python 3.12+
-- Docker (for local MongoDB via Compose)
 
 ## Setup
 
 ```bash
 cp .env.example .env
 ./scripts/cloud-agent-install.sh
-./scripts/start-mongodb.sh
 source .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+The SQLite file is created at `data/app.db` on first start.
 
 - API docs: http://localhost:8000/docs
 - Health: http://localhost:8000/health
@@ -43,7 +44,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## Entitlement API
 
-Grant register for automations (who was given what, by whom, when). Persistence is in-memory.
+Grant register for automations (who was given what, by whom, when). Rows are stored in SQLite.
 
 | Method | Path | Description |
 | --- | --- | --- |
@@ -69,9 +70,9 @@ npm run dev
 
 ## Tests
 
-Requires MongoDB on `localhost:27017` (start with `./scripts/start-mongodb.sh`):
-
 ```bash
 source .venv/bin/activate
 pytest
 ```
+
+Tests use an isolated temporary SQLite database; no external services are required.

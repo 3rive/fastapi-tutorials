@@ -1,40 +1,82 @@
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from collections.abc import AsyncIterator
+from pathlib import Path
 
-from app.core.config import Settings, get_settings
+from sqlalchemy.engine.url import make_url
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.pool import StaticPool
 
-_client: AsyncIOMotorClient | None = None
+from app.core.config import get_settings
+from app.models import Base
 
-
-def get_client() -> AsyncIOMotorClient:
-    if _client is None:
-        raise RuntimeError("MongoDB client is not initialized")
-    return _client
-
-
-def get_database(settings: Settings | None = None) -> AsyncIOMotorDatabase:
-    settings = settings or get_settings()
-    return get_client()[settings.mongodb_database]
-
-
-async def connect_to_mongo(settings: Settings | None = None) -> None:
-    global _client
-    settings = settings or get_settings()
-    _client = AsyncIOMotorClient(settings.mongodb_uri)
-    await _client.admin.command("ping")
+_engine: AsyncEngine | None = None
+_session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
-async def close_mongo_connection() -> None:
-    global _client
-    if _client is not None:
-        _client.close()
-        _client = None
+def _ensure_sqlite_parent(database_url: str) -> None:
+    url = make_url(database_url)
+    if url.get_backend_name() != "sqlite":
+        return
+    database = url.database
+    if not database or database == ":memory:":
+        return
+    Path(database).parent.mkdir(parents=True, exist_ok=True)
 
 
-async def ensure_indexes(database: AsyncIOMotorDatabase) -> None:
-    await database.users.create_index("email", unique=True)
+def _create_engine(database_url: str) -> AsyncEngine:
+    kwargs: dict = {"future": True}
+    url = make_url(database_url)
+    if url.get_backend_name() == "sqlite":
+        kwargs["connect_args"] = {"check_same_thread": False}
+        if not url.database or url.database == ":memory:":
+            kwargs["poolclass"] = StaticPool
+    return create_async_engine(database_url, **kwargs)
+
+
+def get_engine() -> AsyncEngine:
+    global _engine
+    if _engine is None:
+        settings = get_settings()
+        _ensure_sqlite_parent(settings.database_url)
+        _engine = _create_engine(settings.database_url)
+    return _engine
+
+
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    global _session_factory
+    if _session_factory is None:
+        _session_factory = async_sessionmaker(
+            get_engine(),
+            expire_on_commit=False,
+            autoflush=False,
+        )
+    return _session_factory
+
+
+async def get_session() -> AsyncIterator[AsyncSession]:
+    factory = get_session_factory()
+    async with factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 async def init_database() -> None:
-    settings = get_settings()
-    await connect_to_mongo(settings)
-    await ensure_indexes(get_database(settings))
+    engine = get_engine()
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+
+async def dispose_engine() -> None:
+    global _engine, _session_factory
+    if _engine is not None:
+        await _engine.dispose()
+    _engine = None
+    _session_factory = None
