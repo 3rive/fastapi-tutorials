@@ -53,6 +53,20 @@ Grant register for automations (who was given what, by whom, when). Persistence 
 | `PATCH` | `/entitlements/{id}` | Update permissions, expiry, or revoke/restore |
 | `DELETE` | `/entitlements/{id}` | Delete an entitlement |
 
+## Entitlements microfrontend
+
+Standalone UI for entitlements only (no users module). It can run by itself or be composed into a host page as `<ssp-entitlements>`.
+
+```bash
+cd entitlements-mfe
+npm install
+npm run dev
+```
+
+- Standalone: http://localhost:5173
+- Host-shell demo: http://localhost:5173/host.html
+- More detail: `entitlements-mfe/README.md`
+
 ## Tests
 
 Requires MongoDB on `localhost:27017` (start with `./scripts/start-mongodb.sh`):

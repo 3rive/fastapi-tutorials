@@ -20,3 +20,7 @@ source .venv/bin/activate
 
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+
+if [[ -f entitlements-mfe/package.json ]]; then
+  (cd entitlements-mfe && npm install)
+fi

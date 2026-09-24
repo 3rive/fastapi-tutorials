@@ -6,6 +6,10 @@
     {
       "name": "api",
       "port": 8000
+    },
+    {
+      "name": "entitlements-mfe",
+      "port": 5173
     }
   ],
   "terminals": [
@@ -13,6 +17,11 @@
       "name": "api",
       "command": "bash -lc 'source .venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload'",
       "description": "FastAPI dev server with auto-reload on port 8000"
+    },
+    {
+      "name": "entitlements-mfe",
+      "command": "bash -lc 'cd entitlements-mfe && npm install && npm run dev -- --host 0.0.0.0 --port 5173'",
+      "description": "Entitlements microfrontend on port 5173"
     }
   ]
 }
