@@ -12,6 +12,11 @@ class NotFoundError(AppError):
         super().__init__(message, status_code=404)
 
 
+class BadRequestError(AppError):
+    def __init__(self, message: str = "Bad request") -> None:
+        super().__init__(message, status_code=400)
+
+
 class ConflictError(AppError):
     def __init__(self, message: str = "Resource already exists") -> None:
         super().__init__(message, status_code=409)

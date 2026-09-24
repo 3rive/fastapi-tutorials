@@ -44,3 +44,12 @@ async def clean_users_collection(app) -> AsyncIterator[None]:
 
     await get_database().users.delete_many({})
     yield
+
+
+@pytest.fixture(autouse=True)
+def clean_entitlements_store() -> Iterator[None]:
+    from app.core.memory import reset_entitlements_store
+
+    reset_entitlements_store()
+    yield
+    reset_entitlements_store()
